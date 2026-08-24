@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "time-series-forecasting-lab"
 version = "0.1.0"
-description = "End-to-end ML and deep learning pipeline for time-series forecasting."
+description = "Hourly energy-demand forecasting pipeline with ML baselines and a PyTorch LSTM model."
 requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]

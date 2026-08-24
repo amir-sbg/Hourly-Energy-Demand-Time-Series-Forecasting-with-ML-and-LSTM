@@ -1,6 +1,6 @@
-# Time Series Forecasting Lab
+# Hourly Energy Demand Forecasting with ML and LSTM
 
-End-to-end forecasting project that compares classical ML baselines with a PyTorch sequence model on a realistic hourly demand series.
+End-to-end hourly energy-demand forecasting project that compares classical ML baselines with a PyTorch LSTM sequence model.
 
 The repo is intentionally practical: it covers data preparation, time-aware splitting, lag-window construction, baseline modeling, deep learning, evaluation, plots, and reproducible reports without turning into a giant framework.
 
