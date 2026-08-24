@@ -95,6 +95,20 @@ def inverse_target(
     return np.asarray(values, dtype=np.float32) * scale.scale[target_index] + scale.mean[target_index]
 
 
+def select_feature_columns(frame: pd.DataFrame, target_column: str) -> list[str]:
+    calendar_columns = ["hour_sin", "hour_cos", "dow_sin", "dow_cos", "is_weekend"]
+    optional_exogenous = [
+        column
+        for column in ("temperature",)
+        if column in frame.columns and column != target_column
+    ]
+    columns = [target_column, *optional_exogenous, *calendar_columns]
+    missing = [column for column in columns if column not in frame.columns]
+    if missing:
+        raise ValueError(f"missing feature columns after feature engineering: {missing}")
+    return columns
+
+
 def run_pipeline(args: argparse.Namespace) -> dict:
     config = ForecastConfig(
         lookback=args.lookback,
@@ -120,15 +134,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
     else:
         raw = generate_synthetic_demand(periods=args.periods, frequency=config.frequency, seed=config.seed)
     frame = add_calendar_features(raw, config.timestamp_column)
-    feature_columns = [
-        config.target_column,
-        "temperature",
-        "hour_sin",
-        "hour_cos",
-        "dow_sin",
-        "dow_cos",
-        "is_weekend",
-    ]
+    feature_columns = select_feature_columns(frame, config.target_column)
     splits = chronological_split(frame, config.validation_size, config.test_size)
     scaled_splits, scale_info = scale_splits(splits, feature_columns)
 

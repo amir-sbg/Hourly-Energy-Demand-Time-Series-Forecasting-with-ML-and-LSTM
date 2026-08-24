@@ -1,7 +1,7 @@
 import numpy as np
 
 from ts_forecasting.data import SplitFrames, generate_synthetic_demand
-from ts_forecasting.pipeline import ScaleInfo, inverse_target, scale_splits
+from ts_forecasting.pipeline import ScaleInfo, inverse_target, scale_splits, select_feature_columns
 
 
 def test_scale_splits_fit_only_on_train_partition() -> None:
@@ -26,3 +26,29 @@ def test_inverse_target_restores_scaled_values() -> None:
     restored = inverse_target(np.array([[0.0, 1.0]], dtype=np.float32), scale, "load")
 
     np.testing.assert_allclose(restored, np.array([[50.0, 52.0]], dtype=np.float32))
+
+
+def test_feature_selection_allows_target_only_series() -> None:
+    frame = generate_synthetic_demand(periods=24 * 14).drop(columns=["temperature"])
+    frame["hour_sin"] = 0.0
+    frame["hour_cos"] = 1.0
+    frame["dow_sin"] = 0.0
+    frame["dow_cos"] = 1.0
+    frame["is_weekend"] = 0.0
+
+    columns = select_feature_columns(frame, "load")
+
+    assert columns == ["load", "hour_sin", "hour_cos", "dow_sin", "dow_cos", "is_weekend"]
+
+
+def test_feature_selection_keeps_available_exogenous_columns() -> None:
+    frame = generate_synthetic_demand(periods=24 * 14)
+    frame["hour_sin"] = 0.0
+    frame["hour_cos"] = 1.0
+    frame["dow_sin"] = 0.0
+    frame["dow_cos"] = 1.0
+    frame["is_weekend"] = 0.0
+
+    columns = select_feature_columns(frame, "load")
+
+    assert "temperature" in columns
