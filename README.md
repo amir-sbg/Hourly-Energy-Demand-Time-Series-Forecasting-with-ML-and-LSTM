@@ -102,7 +102,7 @@ artifacts/
 └── lstm_training_history.csv
 ```
 
-`run_summary.json` contains MAE, RMSE, MAPE, SMAPE, and MASE for each model. `per_horizon_metrics.csv` shows how error changes from short-range to longer-range forecasts. `predictions.csv` keeps actual values and model forecasts in a flat format for review.
+`run_summary.json` contains MAE, RMSE, MAPE, WAPE, SMAPE, MASE, and mean forecast bias for each model. `per_horizon_metrics.csv` shows how error changes from short-range to longer-range forecasts. `predictions.csv` keeps actual values and model forecasts in a flat format for review.
 
 ## Project structure
 

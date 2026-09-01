@@ -8,7 +8,7 @@ from ts_forecasting.data import (
     generate_synthetic_demand,
     make_supervised_windows,
 )
-from ts_forecasting.metrics import forecast_metrics, mase, per_horizon_metrics
+from ts_forecasting.metrics import forecast_metrics, mase, mean_error, per_horizon_metrics, wape
 
 
 def test_synthetic_demand_is_reproducible() -> None:
@@ -60,8 +60,18 @@ def test_metrics_report_forecast_errors() -> None:
 
     assert report["mae"] == 1.0
     assert report["rmse"] == 1.0
+    assert report["mean_error"] == 0.0
+    assert report["wape"] == pytest.approx(400 / 52)
     assert report["mase"] == 1.0
     assert len(per_horizon_metrics(true, pred)) == 2
+
+
+def test_forecast_bias_and_wape_are_scale_aware() -> None:
+    true = np.array([10.0, 20.0, 30.0])
+    pred = np.array([12.0, 21.0, 33.0])
+
+    assert mean_error(true, pred) == pytest.approx(2.0)
+    assert wape(true, pred) == pytest.approx(10.0)
 
 
 def test_mase_rejects_short_insample() -> None:

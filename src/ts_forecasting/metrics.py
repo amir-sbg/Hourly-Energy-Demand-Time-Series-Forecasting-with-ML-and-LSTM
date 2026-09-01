@@ -13,9 +13,20 @@ def rmse(y_true, y_pred) -> float:
     return float(np.sqrt(np.mean((true - pred) ** 2)))
 
 
+def mean_error(y_true, y_pred) -> float:
+    true, pred = _as_matching_arrays(y_true, y_pred)
+    return float(np.mean(pred - true))
+
+
 def mape(y_true, y_pred, epsilon: float = 1e-8) -> float:
     true, pred = _as_matching_arrays(y_true, y_pred)
     return float(np.mean(np.abs((true - pred) / np.maximum(np.abs(true), epsilon))) * 100)
+
+
+def wape(y_true, y_pred, epsilon: float = 1e-8) -> float:
+    true, pred = _as_matching_arrays(y_true, y_pred)
+    denominator = max(float(np.sum(np.abs(true))), epsilon)
+    return float(np.sum(np.abs(true - pred)) / denominator * 100)
 
 
 def smape(y_true, y_pred, epsilon: float = 1e-8) -> float:
@@ -41,7 +52,9 @@ def forecast_metrics(y_true, y_pred, insample=None, seasonality: int = 24) -> di
     report = {
         "mae": mae(y_true, y_pred),
         "rmse": rmse(y_true, y_pred),
+        "mean_error": mean_error(y_true, y_pred),
         "mape": mape(y_true, y_pred),
+        "wape": wape(y_true, y_pred),
         "smape": smape(y_true, y_pred),
     }
     if insample is not None:
@@ -59,6 +72,7 @@ def per_horizon_metrics(y_true, y_pred) -> list[dict[str, float | int]]:
             "horizon": index + 1,
             "mae": mae(true[:, index], pred[:, index]),
             "rmse": rmse(true[:, index], pred[:, index]),
+            "mean_error": mean_error(true[:, index], pred[:, index]),
             "smape": smape(true[:, index], pred[:, index]),
         }
         for index in range(true.shape[1])
