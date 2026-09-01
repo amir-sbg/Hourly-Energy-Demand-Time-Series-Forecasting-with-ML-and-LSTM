@@ -62,6 +62,32 @@ def forecast_metrics(y_true, y_pred, insample=None, seasonality: int = 24) -> di
     return report
 
 
+def rank_models(
+    metric_report: dict[str, dict[str, float]],
+    primary_metric: str = "mae",
+) -> list[dict[str, float | int | str]]:
+    rows = []
+    for model_name, metrics in metric_report.items():
+        if primary_metric not in metrics:
+            raise ValueError(f"{model_name} is missing metric {primary_metric}")
+        value = float(metrics[primary_metric])
+        if not np.isfinite(value):
+            value = float("inf")
+        rows.append(
+            {
+                "model": model_name,
+                "rank_metric": primary_metric,
+                "rank_value": value,
+                "mae": float(metrics.get("mae", np.nan)),
+                "rmse": float(metrics.get("rmse", np.nan)),
+                "wape": float(metrics.get("wape", np.nan)),
+                "mean_error": float(metrics.get("mean_error", np.nan)),
+            }
+        )
+    rows = sorted(rows, key=lambda row: (float(row["rank_value"]), str(row["model"])))
+    return [{**row, "rank": index + 1} for index, row in enumerate(rows)]
+
+
 def per_horizon_metrics(y_true, y_pred) -> list[dict[str, float | int]]:
     true, pred = _as_matching_arrays(y_true, y_pred)
     if true.ndim == 1:

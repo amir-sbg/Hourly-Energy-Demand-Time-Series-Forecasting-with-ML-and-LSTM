@@ -92,6 +92,7 @@ python -m ts_forecasting.pipeline \
 ```text
 reports/
 ├── run_summary.json
+├── model_ranking.csv
 ├── per_horizon_metrics.csv
 ├── predictions.csv
 ├── forecast_comparison.png
@@ -102,7 +103,7 @@ artifacts/
 └── lstm_training_history.csv
 ```
 
-`run_summary.json` contains MAE, RMSE, MAPE, WAPE, SMAPE, MASE, mean forecast bias, and a small data-quality summary with timestamp gaps, duplicates, missing targets, and inferred frequency. `per_horizon_metrics.csv` shows how error changes from short-range to longer-range forecasts. `predictions.csv` keeps actual values and model forecasts in a flat format for review.
+`run_summary.json` contains MAE, RMSE, MAPE, WAPE, SMAPE, MASE, mean forecast bias, and a small data-quality summary with timestamp gaps, duplicates, missing targets, and inferred frequency. `model_ranking.csv` ranks the baselines and LSTM by MAE for a quick model-selection pass. `per_horizon_metrics.csv` shows how error changes from short-range to longer-range forecasts. `predictions.csv` keeps actual values and model forecasts in a flat format for review.
 
 ## Project structure
 

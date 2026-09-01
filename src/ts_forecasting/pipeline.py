@@ -26,7 +26,7 @@ from .data import (
     make_supervised_windows,
     time_series_diagnostics,
 )
-from .metrics import forecast_metrics, per_horizon_metrics
+from .metrics import forecast_metrics, per_horizon_metrics, rank_models
 from .models import (
     LSTMForecaster,
     TorchTrainConfig,
@@ -242,6 +242,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         name: forecast_metrics(y_test, values, insample=train_insample, seasonality=24)
         for name, values in predictions.items()
     }
+    model_ranking = rank_models(metrics, primary_metric="mae")
     horizon_rows = []
     for name, values in predictions.items():
         for row in per_horizon_metrics(y_test, values):
@@ -260,17 +261,24 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             "data_diagnostics": data_diagnostics,
             "scale": scale_info.__dict__,
             "metrics": metrics,
+            "model_ranking": model_ranking,
+            "best_model": model_ranking[0]["model"],
             "training_summary": training_summary,
         },
         config.report_dir / "run_summary.json",
     )
+    pd.DataFrame(model_ranking).to_csv(config.report_dir / "model_ranking.csv", index=False)
     pd.DataFrame(horizon_rows).to_csv(config.report_dir / "per_horizon_metrics.csv", index=False)
     _save_predictions(y_test, predictions, config.report_dir / "predictions.csv")
     if history:
         pd.DataFrame(history).to_csv(config.artifact_dir / "lstm_training_history.csv", index=False)
         _plot_learning_curve(history, config.report_dir / "learning_curve.png")
     _plot_forecasts(y_test, predictions, config.report_dir / "forecast_comparison.png")
-    return {"metrics": metrics, "training_summary": training_summary}
+    return {
+        "metrics": metrics,
+        "model_ranking": model_ranking,
+        "training_summary": training_summary,
+    }
 
 
 def _save_json(payload: dict, path: Path) -> None:

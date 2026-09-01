@@ -9,7 +9,14 @@ from ts_forecasting.data import (
     make_supervised_windows,
     time_series_diagnostics,
 )
-from ts_forecasting.metrics import forecast_metrics, mase, mean_error, per_horizon_metrics, wape
+from ts_forecasting.metrics import (
+    forecast_metrics,
+    mase,
+    mean_error,
+    per_horizon_metrics,
+    rank_models,
+    wape,
+)
 
 
 def test_synthetic_demand_is_reproducible() -> None:
@@ -96,6 +103,19 @@ def test_forecast_bias_and_wape_are_scale_aware() -> None:
 
     assert mean_error(true, pred) == pytest.approx(2.0)
     assert wape(true, pred) == pytest.approx(10.0)
+
+
+def test_rank_models_orders_by_primary_metric() -> None:
+    rows = rank_models(
+        {
+            "lstm": {"mae": 1.8, "rmse": 2.0, "wape": 4.0, "mean_error": -0.1},
+            "ridge": {"mae": 1.2, "rmse": 1.6, "wape": 3.0, "mean_error": 0.2},
+        }
+    )
+
+    assert rows[0]["model"] == "ridge"
+    assert rows[0]["rank"] == 1
+    assert rows[1]["rank_value"] == 1.8
 
 
 def test_mase_rejects_short_insample() -> None:
