@@ -24,6 +24,7 @@ from .data import (
     generate_synthetic_demand,
     load_time_series_csv,
     make_supervised_windows,
+    time_series_diagnostics,
 )
 from .metrics import forecast_metrics, per_horizon_metrics
 from .models import (
@@ -133,6 +134,11 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         raw = load_time_series_csv(args.input_csv, config.timestamp_column, config.target_column)
     else:
         raw = generate_synthetic_demand(periods=args.periods, frequency=config.frequency, seed=config.seed)
+    data_diagnostics = time_series_diagnostics(
+        raw,
+        config.timestamp_column,
+        config.target_column,
+    )
     frame = add_calendar_features(raw, config.timestamp_column)
     feature_columns = select_feature_columns(frame, config.target_column)
     splits = chronological_split(frame, config.validation_size, config.test_size)
@@ -251,6 +257,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
                 "validation": len(splits.validation),
                 "test": len(splits.test),
             },
+            "data_diagnostics": data_diagnostics,
             "scale": scale_info.__dict__,
             "metrics": metrics,
             "training_summary": training_summary,

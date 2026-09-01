@@ -81,6 +81,45 @@ def validate_time_series_frame(
         raise TypeError(f"{target_column} must be numeric")
 
 
+def time_series_diagnostics(
+    frame: pd.DataFrame,
+    timestamp_column: str,
+    target_column: str,
+) -> dict[str, float | int | str | None]:
+    validate_time_series_frame(frame, timestamp_column, target_column)
+    values = frame.copy()
+    timestamps = pd.to_datetime(values[timestamp_column])
+    sorted_timestamps = timestamps.sort_values().reset_index(drop=True)
+    deltas = sorted_timestamps.diff().dropna()
+    positive_deltas = deltas[deltas > pd.Timedelta(0)]
+    duplicate_timestamps = int(timestamps.duplicated().sum())
+    missing_target_rows = int(values[target_column].isna().sum())
+    unique_timestamps = sorted_timestamps.drop_duplicates()
+    inferred_frequency = (
+        pd.infer_freq(unique_timestamps)
+        if len(unique_timestamps) >= 3
+        else None
+    )
+
+    modal_step_seconds: float | None = None
+    irregular_steps = 0
+    if not positive_deltas.empty:
+        modal_delta = positive_deltas.value_counts().idxmax()
+        modal_step_seconds = float(modal_delta.total_seconds())
+        irregular_steps = int((positive_deltas != modal_delta).sum())
+
+    return {
+        "rows": int(len(values)),
+        "start": sorted_timestamps.iloc[0].isoformat(),
+        "end": sorted_timestamps.iloc[-1].isoformat(),
+        "inferred_frequency": inferred_frequency,
+        "duplicate_timestamps": duplicate_timestamps,
+        "missing_target_rows": missing_target_rows,
+        "modal_step_seconds": modal_step_seconds,
+        "irregular_steps": irregular_steps,
+    }
+
+
 def add_calendar_features(
     frame: pd.DataFrame,
     timestamp_column: str = "timestamp",

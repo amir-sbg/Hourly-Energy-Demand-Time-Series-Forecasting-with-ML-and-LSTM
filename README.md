@@ -102,7 +102,7 @@ artifacts/
 └── lstm_training_history.csv
 ```
 
-`run_summary.json` contains MAE, RMSE, MAPE, WAPE, SMAPE, MASE, and mean forecast bias for each model. `per_horizon_metrics.csv` shows how error changes from short-range to longer-range forecasts. `predictions.csv` keeps actual values and model forecasts in a flat format for review.
+`run_summary.json` contains MAE, RMSE, MAPE, WAPE, SMAPE, MASE, mean forecast bias, and a small data-quality summary with timestamp gaps, duplicates, missing targets, and inferred frequency. `per_horizon_metrics.csv` shows how error changes from short-range to longer-range forecasts. `predictions.csv` keeps actual values and model forecasts in a flat format for review.
 
 ## Project structure
 
@@ -110,7 +110,7 @@ artifacts/
 src/ts_forecasting/
 ├── baselines.py   # persistence, seasonal naive, Ridge window model
 ├── config.py      # experiment configuration
-├── data.py        # synthetic series, CSV loading, splits, windows
+├── data.py        # synthetic series, CSV loading, diagnostics, splits, windows
 ├── metrics.py     # forecasting metrics
 ├── models.py      # PyTorch LSTM forecaster and training loop
 └── pipeline.py    # end-to-end experiment runner

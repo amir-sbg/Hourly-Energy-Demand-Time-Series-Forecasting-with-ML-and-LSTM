@@ -7,6 +7,7 @@ from ts_forecasting.data import (
     chronological_split,
     generate_synthetic_demand,
     make_supervised_windows,
+    time_series_diagnostics,
 )
 from ts_forecasting.metrics import forecast_metrics, mase, mean_error, per_horizon_metrics, wape
 
@@ -24,6 +25,29 @@ def test_calendar_features_add_periodic_columns() -> None:
 
     assert {"hour_sin", "hour_cos", "dow_sin", "dow_cos", "is_weekend"}.issubset(frame.columns)
     assert frame["hour_sin"].between(-1, 1).all()
+
+
+def test_time_series_diagnostics_report_gaps_and_duplicates() -> None:
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                [
+                    "2024-01-01 00:00",
+                    "2024-01-01 01:00",
+                    "2024-01-01 01:00",
+                    "2024-01-01 04:00",
+                ]
+            ),
+            "load": [10.0, 11.0, np.nan, 13.0],
+        }
+    )
+
+    report = time_series_diagnostics(frame, "timestamp", "load")
+
+    assert report["rows"] == 4
+    assert report["duplicate_timestamps"] == 1
+    assert report["missing_target_rows"] == 1
+    assert report["irregular_steps"] == 1
 
 
 def test_chronological_split_preserves_order() -> None:
