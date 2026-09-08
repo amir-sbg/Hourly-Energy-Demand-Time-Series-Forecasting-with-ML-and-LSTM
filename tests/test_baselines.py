@@ -4,6 +4,7 @@ import pytest
 from ts_forecasting.baselines import (
     RidgeForecaster,
     flatten_windows,
+    moving_average_from_windows,
     persistence_from_windows,
     seasonal_naive_from_windows,
 )
@@ -36,6 +37,20 @@ def test_persistence_repeats_last_target_value() -> None:
 
     np.testing.assert_array_equal(predictions[:, 0], toy_windows()[:, -1, 0])
     assert predictions.shape == (2, 4)
+
+
+def test_moving_average_repeats_recent_mean() -> None:
+    predictions = moving_average_from_windows(
+        toy_windows(),
+        target_index=0,
+        horizon=3,
+        window_size=3,
+    )
+
+    np.testing.assert_array_equal(
+        predictions[0],
+        np.array([(6 + 8 + 10) / 3] * 3, dtype=np.float32),
+    )
 
 
 def test_ridge_forecaster_learns_simple_mapping() -> None:

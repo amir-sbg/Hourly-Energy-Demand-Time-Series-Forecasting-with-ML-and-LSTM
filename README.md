@@ -24,6 +24,7 @@ If a `temperature` column exists, the pipeline uses it as an exogenous feature. 
 6. Build supervised lookback windows for multi-step forecasting.
 7. Train/evaluate:
    - persistence baseline
+   - moving-average baseline
    - seasonal naive baseline
    - Ridge regression on flattened lag windows
    - PyTorch LSTM direct multi-horizon forecaster
@@ -82,6 +83,7 @@ python -m ts_forecasting.pipeline \
   --epochs 12 \
   --batch-size 64 \
   --hidden-size 64 \
+  --moving-average-window 24 \
   --learning-rate 0.001 \
   --device auto
 ```

@@ -15,7 +15,12 @@ import pandas as pd
 import torch
 from sklearn.preprocessing import StandardScaler
 
-from .baselines import RidgeForecaster, persistence_from_windows, seasonal_naive_from_windows
+from .baselines import (
+    RidgeForecaster,
+    moving_average_from_windows,
+    persistence_from_windows,
+    seasonal_naive_from_windows,
+)
 from .config import ForecastConfig
 from .data import (
     SplitFrames,
@@ -180,6 +185,16 @@ def run_pipeline(args: argparse.Namespace) -> dict:
 
     predictions["persistence"] = inverse_target(
         persistence_from_windows(test_windows.x, test_windows.target_index, config.horizon),
+        scale_info,
+        config.target_column,
+    )
+    predictions["moving_average"] = inverse_target(
+        moving_average_from_windows(
+            test_windows.x,
+            test_windows.target_index,
+            config.horizon,
+            window_size=args.moving_average_window,
+        ),
         scale_info,
         config.target_column,
     )
@@ -354,6 +369,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hidden-size", type=int, default=64)
     parser.add_argument("--patience", type=int, default=4)
     parser.add_argument("--ridge-alpha", type=float, default=1.0)
+    parser.add_argument("--moving-average-window", type=int, default=24)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--skip-lstm", action="store_true")

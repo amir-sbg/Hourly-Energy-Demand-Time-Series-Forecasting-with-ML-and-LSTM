@@ -82,6 +82,26 @@ def persistence_from_windows(
     return np.repeat(last_value[:, None], horizon, axis=1)
 
 
+def moving_average_from_windows(
+    x: np.ndarray,
+    target_index: int,
+    horizon: int,
+    window_size: int = 24,
+) -> np.ndarray:
+    values = np.asarray(x, dtype=np.float32)
+    if values.ndim != 3:
+        raise ValueError("x must have shape (samples, lookback, features)")
+    if horizon < 1 or window_size < 1:
+        raise ValueError("horizon and window_size must be positive")
+    if not 0 <= target_index < values.shape[2]:
+        raise ValueError("target_index is out of bounds")
+
+    target_history = values[:, :, target_index]
+    window_size = min(window_size, target_history.shape[1])
+    averages = target_history[:, -window_size:].mean(axis=1)
+    return np.repeat(averages[:, None], horizon, axis=1)
+
+
 def _as_2d_targets(y: np.ndarray) -> np.ndarray:
     values = np.asarray(y, dtype=np.float32)
     if values.ndim == 1:
