@@ -20,13 +20,14 @@ If a `temperature` column exists, the pipeline uses it as an exogenous feature. 
 2. Add calendar features: hour-of-day, day-of-week, and weekend indicators.
 3. Split chronologically into train, validation, and test sets.
 4. Fit scaling only on the training partition.
-5. Build supervised lookback windows for multi-step forecasting.
-6. Train/evaluate:
+5. Record a small rolling-origin fold plan for time-aware backtesting.
+6. Build supervised lookback windows for multi-step forecasting.
+7. Train/evaluate:
    - persistence baseline
    - seasonal naive baseline
    - Ridge regression on flattened lag windows
    - PyTorch LSTM direct multi-horizon forecaster
-7. Save metrics, per-horizon errors, predictions, plots, and model artifacts.
+8. Save metrics, per-horizon errors, predictions, plots, and model artifacts.
 
 ## Models
 
@@ -103,7 +104,7 @@ artifacts/
 └── lstm_training_history.csv
 ```
 
-`run_summary.json` contains MAE, RMSE, MAPE, WAPE, SMAPE, MASE, mean forecast bias, and a small data-quality summary with timestamp gaps, duplicates, missing targets, and inferred frequency. `model_ranking.csv` ranks the baselines and LSTM by MAE for a quick model-selection pass. `per_horizon_metrics.csv` shows how error changes from short-range to longer-range forecasts. `predictions.csv` keeps actual values and model forecasts in a flat format for review.
+`run_summary.json` contains MAE, RMSE, MAPE, WAPE, SMAPE, MASE, mean forecast bias, a rolling-origin fold plan, and a small data-quality summary with timestamp gaps, duplicates, missing targets, and inferred frequency. `model_ranking.csv` ranks the baselines and LSTM by MAE for a quick model-selection pass. `per_horizon_metrics.csv` shows how error changes from short-range to longer-range forecasts. `predictions.csv` keeps actual values and model forecasts in a flat format for review.
 
 ## Project structure
 

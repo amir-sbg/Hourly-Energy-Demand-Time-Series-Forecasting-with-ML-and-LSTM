@@ -7,6 +7,7 @@ from ts_forecasting.data import (
     chronological_split,
     generate_synthetic_demand,
     make_supervised_windows,
+    rolling_origin_folds,
     time_series_diagnostics,
 )
 from ts_forecasting.metrics import (
@@ -66,6 +67,21 @@ def test_chronological_split_preserves_order() -> None:
     assert len(split.test) == 200
     assert split.train["timestamp"].max() < split.validation["timestamp"].min()
     assert split.validation["timestamp"].max() < split.test["timestamp"].min()
+
+
+def test_rolling_origin_folds_expand_training_window() -> None:
+    folds = rolling_origin_folds(
+        rows=100,
+        initial_train_size=50,
+        validation_size=10,
+        step_size=20,
+        max_folds=3,
+    )
+
+    assert [fold.fold for fold in folds] == [1, 2, 3]
+    assert [fold.train_end for fold in folds] == [50, 70, 90]
+    assert folds[0].validation_start == 50
+    assert folds[-1].validation_end == 100
 
 
 def test_supervised_windows_have_expected_shape() -> None:

@@ -22,6 +22,15 @@ class WindowedDataset:
     feature_columns: list[str]
 
 
+@dataclass(frozen=True)
+class BacktestFold:
+    fold: int
+    train_start: int
+    train_end: int
+    validation_start: int
+    validation_end: int
+
+
 def generate_synthetic_demand(
     periods: int = 24 * 180,
     frequency: str = "h",
@@ -158,6 +167,40 @@ def chronological_split(
         validation=frame.iloc[train_rows : train_rows + validation_rows].reset_index(drop=True),
         test=frame.iloc[train_rows + validation_rows :].reset_index(drop=True),
     )
+
+
+def rolling_origin_folds(
+    rows: int,
+    initial_train_size: int,
+    validation_size: int,
+    step_size: int,
+    max_folds: int | None = None,
+) -> list[BacktestFold]:
+    if rows < 1:
+        raise ValueError("rows must be positive")
+    if initial_train_size < 1 or validation_size < 1 or step_size < 1:
+        raise ValueError("fold sizes must be positive")
+    if initial_train_size + validation_size > rows:
+        raise ValueError("not enough rows for the first rolling fold")
+    if max_folds is not None and max_folds < 1:
+        raise ValueError("max_folds must be positive or None")
+
+    folds = []
+    train_end = initial_train_size
+    while train_end + validation_size <= rows:
+        folds.append(
+            BacktestFold(
+                fold=len(folds) + 1,
+                train_start=0,
+                train_end=train_end,
+                validation_start=train_end,
+                validation_end=train_end + validation_size,
+            )
+        )
+        if max_folds is not None and len(folds) >= max_folds:
+            break
+        train_end += step_size
+    return folds
 
 
 def make_supervised_windows(

@@ -24,6 +24,7 @@ from .data import (
     generate_synthetic_demand,
     load_time_series_csv,
     make_supervised_windows,
+    rolling_origin_folds,
     time_series_diagnostics,
 )
 from .metrics import forecast_metrics, per_horizon_metrics, rank_models
@@ -142,6 +143,13 @@ def run_pipeline(args: argparse.Namespace) -> dict:
     frame = add_calendar_features(raw, config.timestamp_column)
     feature_columns = select_feature_columns(frame, config.target_column)
     splits = chronological_split(frame, config.validation_size, config.test_size)
+    backtest_folds = rolling_origin_folds(
+        rows=len(frame),
+        initial_train_size=len(splits.train),
+        validation_size=len(splits.validation),
+        step_size=max(len(splits.validation), 1),
+        max_folds=3,
+    )
     scaled_splits, scale_info = scale_splits(splits, feature_columns)
 
     train_windows = make_supervised_windows(
@@ -259,6 +267,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
                 "test": len(splits.test),
             },
             "data_diagnostics": data_diagnostics,
+            "rolling_origin_folds": [fold.__dict__ for fold in backtest_folds],
             "scale": scale_info.__dict__,
             "metrics": metrics,
             "model_ranking": model_ranking,
