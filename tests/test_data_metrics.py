@@ -14,6 +14,7 @@ from ts_forecasting.metrics import (
     forecast_metrics,
     mase,
     mean_error,
+    directional_accuracy,
     per_horizon_metrics,
     rank_models,
     wape,
@@ -109,8 +110,17 @@ def test_metrics_report_forecast_errors() -> None:
     assert report["rmse"] == 1.0
     assert report["mean_error"] == 0.0
     assert report["wape"] == pytest.approx(400 / 52)
+    assert report["directional_accuracy"] == 0.5
     assert report["mase"] == 1.0
     assert len(per_horizon_metrics(true, pred)) == 2
+
+
+def test_directional_accuracy_tracks_horizon_shape() -> None:
+    true = np.array([[10.0, 12.0, 11.0], [20.0, 18.0, 19.0]])
+    pred = np.array([[9.0, 11.0, 10.0], [20.0, 22.0, 23.0]])
+
+    assert directional_accuracy(true, pred) == 0.75
+    assert np.isnan(directional_accuracy(np.array([[1.0], [2.0]]), np.array([[1.0], [2.0]])))
 
 
 def test_forecast_bias_and_wape_are_scale_aware() -> None:
@@ -125,13 +135,20 @@ def test_rank_models_orders_by_primary_metric() -> None:
     rows = rank_models(
         {
             "lstm": {"mae": 1.8, "rmse": 2.0, "wape": 4.0, "mean_error": -0.1},
-            "ridge": {"mae": 1.2, "rmse": 1.6, "wape": 3.0, "mean_error": 0.2},
+            "ridge": {
+                "mae": 1.2,
+                "rmse": 1.6,
+                "wape": 3.0,
+                "mean_error": 0.2,
+                "directional_accuracy": 0.7,
+            },
         }
     )
 
     assert rows[0]["model"] == "ridge"
     assert rows[0]["rank"] == 1
     assert rows[1]["rank_value"] == 1.8
+    assert rows[0]["directional_accuracy"] == 0.7
 
 
 def test_mase_rejects_short_insample() -> None:

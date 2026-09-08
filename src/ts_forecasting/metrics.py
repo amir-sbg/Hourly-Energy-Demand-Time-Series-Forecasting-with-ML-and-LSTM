@@ -35,6 +35,17 @@ def smape(y_true, y_pred, epsilon: float = 1e-8) -> float:
     return float(np.mean(2 * np.abs(pred - true) / denominator) * 100)
 
 
+def directional_accuracy(y_true, y_pred) -> float:
+    true, pred = _as_matching_arrays(y_true, y_pred)
+    true = true.reshape(true.shape[0], -1)
+    pred = pred.reshape(pred.shape[0], -1)
+    if true.shape[1] < 2:
+        return float("nan")
+    true_direction = np.sign(np.diff(true, axis=1))
+    pred_direction = np.sign(np.diff(pred, axis=1))
+    return float(np.mean(true_direction == pred_direction))
+
+
 def mase(y_true, y_pred, insample, seasonality: int = 1) -> float:
     true, pred = _as_matching_arrays(y_true, y_pred)
     insample = np.asarray(insample, dtype=np.float64).reshape(-1)
@@ -56,6 +67,7 @@ def forecast_metrics(y_true, y_pred, insample=None, seasonality: int = 24) -> di
         "mape": mape(y_true, y_pred),
         "wape": wape(y_true, y_pred),
         "smape": smape(y_true, y_pred),
+        "directional_accuracy": directional_accuracy(y_true, y_pred),
     }
     if insample is not None:
         report["mase"] = mase(y_true, y_pred, insample, seasonality=seasonality)
@@ -82,6 +94,9 @@ def rank_models(
                 "rmse": float(metrics.get("rmse", np.nan)),
                 "wape": float(metrics.get("wape", np.nan)),
                 "mean_error": float(metrics.get("mean_error", np.nan)),
+                "directional_accuracy": float(
+                    metrics.get("directional_accuracy", np.nan)
+                ),
             }
         )
     rows = sorted(rows, key=lambda row: (float(row["rank_value"]), str(row["model"])))
