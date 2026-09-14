@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import torch
 
 from ts_forecasting.models import (
@@ -27,6 +28,16 @@ def test_torch_loader_rejects_sample_mismatch() -> None:
         assert "same number" in str(error)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_torch_loader_rejects_empty_or_non_finite_batches() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        make_torch_loader(np.zeros((0, 4, 2)), np.zeros((0, 1)), 2, shuffle=False)
+
+    x = np.zeros((2, 4, 2), dtype=np.float32)
+    x[0, 0, 0] = np.nan
+    with pytest.raises(ValueError, match="finite"):
+        make_torch_loader(x, np.zeros((2, 1)), 2, shuffle=False)
 
 
 def test_lstm_training_smoke() -> None:

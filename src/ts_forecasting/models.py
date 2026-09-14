@@ -74,10 +74,16 @@ def make_torch_loader(
 ) -> DataLoader:
     x_tensor = torch.from_numpy(np.asarray(x, dtype=np.float32))
     y_tensor = torch.from_numpy(np.asarray(y, dtype=np.float32))
+    if batch_size < 1:
+        raise ValueError("batch_size must be positive")
     if x_tensor.ndim != 3 or y_tensor.ndim != 2:
         raise ValueError("expected x=(samples, lookback, features), y=(samples, horizon)")
     if x_tensor.shape[0] != y_tensor.shape[0]:
         raise ValueError("x and y must contain the same number of samples")
+    if x_tensor.shape[0] == 0:
+        raise ValueError("x and y must contain at least one sample")
+    if not torch.isfinite(x_tensor).all() or not torch.isfinite(y_tensor).all():
+        raise ValueError("x and y must contain only finite values")
     return DataLoader(TensorDataset(x_tensor, y_tensor), batch_size=batch_size, shuffle=shuffle)
 
 

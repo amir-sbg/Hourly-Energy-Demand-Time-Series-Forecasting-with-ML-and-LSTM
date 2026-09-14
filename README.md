@@ -24,6 +24,7 @@ If a `temperature` column exists, the pipeline uses it as an exogenous feature. 
 6. Build supervised lookback windows for multi-step forecasting.
 7. Train/evaluate:
    - persistence baseline
+   - linear-drift baseline
    - moving-average baseline
    - seasonal naive baseline
    - Ridge regression on flattened lag windows
@@ -32,7 +33,7 @@ If a `temperature` column exists, the pipeline uses it as an exogenous feature. 
 
 ## Models
 
-The classical ML model is a direct multi-output Ridge regressor trained on flattened lookback windows. It gives a strong, fast baseline and makes it easy to compare against the sequence model.
+The classical baselines include persistence, a linear-drift extrapolation, moving average, and seasonal naive forecasts. A direct multi-output Ridge regressor is trained on flattened lookback windows as the main non-neural ML comparison.
 
 The deep learning model is an LSTM encoder with a small MLP forecast head. It predicts the full horizon directly instead of recursively predicting one step at a time. Training uses AdamW, MSE loss, gradient clipping, validation tracking, and early stopping.
 
