@@ -101,6 +101,20 @@ def test_supervised_windows_have_expected_shape() -> None:
     assert dataset.target_index == 0
 
 
+def test_supervised_windows_reject_missing_values() -> None:
+    frame = add_calendar_features(generate_synthetic_demand(periods=24 * 20))
+    frame.loc[10, "load"] = np.nan
+
+    with pytest.raises(ValueError, match="finite"):
+        make_supervised_windows(
+            frame,
+            feature_columns=["load", "hour_sin"],
+            target_column="load",
+            lookback=24,
+            horizon=6,
+        )
+
+
 def test_metrics_report_forecast_errors() -> None:
     true = np.array([[10.0, 12.0], [14.0, 16.0]])
     pred = np.array([[11.0, 11.0], [13.0, 17.0]])

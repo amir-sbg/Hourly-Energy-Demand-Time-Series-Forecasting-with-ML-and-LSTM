@@ -219,6 +219,8 @@ def make_supervised_windows(
 
     values = frame[feature_columns].to_numpy(dtype=np.float32)
     target = frame[target_column].to_numpy(dtype=np.float32)
+    if not np.isfinite(values).all() or not np.isfinite(target).all():
+        raise ValueError("features and target must contain only finite values")
     if len(frame) < lookback + horizon:
         raise ValueError("not enough rows to build one supervised window")
 
