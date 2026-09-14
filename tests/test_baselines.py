@@ -3,6 +3,7 @@ import pytest
 
 from ts_forecasting.baselines import (
     RidgeForecaster,
+    drift_from_windows,
     flatten_windows,
     moving_average_from_windows,
     persistence_from_windows,
@@ -37,6 +38,21 @@ def test_persistence_repeats_last_target_value() -> None:
 
     np.testing.assert_array_equal(predictions[:, 0], toy_windows()[:, -1, 0])
     assert predictions.shape == (2, 4)
+
+
+def test_drift_extrapolates_recent_window_slope() -> None:
+    predictions = drift_from_windows(
+        toy_windows(),
+        target_index=0,
+        horizon=3,
+    )
+
+    np.testing.assert_array_equal(predictions[0], np.array([12, 14, 16], dtype=np.float32))
+
+
+def test_persistence_rejects_invalid_target_index() -> None:
+    with pytest.raises(ValueError, match="target_index"):
+        persistence_from_windows(toy_windows(), target_index=3, horizon=2)
 
 
 def test_moving_average_repeats_recent_mean() -> None:

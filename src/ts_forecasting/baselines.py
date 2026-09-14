@@ -78,8 +78,31 @@ def persistence_from_windows(
         raise ValueError("x must have shape (samples, lookback, features)")
     if horizon < 1:
         raise ValueError("horizon must be positive")
+    if not 0 <= target_index < values.shape[2]:
+        raise ValueError("target_index is out of bounds")
     last_value = values[:, -1, target_index]
     return np.repeat(last_value[:, None], horizon, axis=1)
+
+
+def drift_from_windows(
+    x: np.ndarray,
+    target_index: int,
+    horizon: int,
+) -> np.ndarray:
+    values = np.asarray(x, dtype=np.float32)
+    if values.ndim != 3:
+        raise ValueError("x must have shape (samples, lookback, features)")
+    if horizon < 1:
+        raise ValueError("horizon must be positive")
+    if values.shape[1] < 2:
+        raise ValueError("lookback must contain at least two observations")
+    if not 0 <= target_index < values.shape[2]:
+        raise ValueError("target_index is out of bounds")
+
+    target_history = values[:, :, target_index]
+    slope = (target_history[:, -1] - target_history[:, 0]) / (values.shape[1] - 1)
+    steps = np.arange(1, horizon + 1, dtype=np.float32)
+    return target_history[:, -1, None] + slope[:, None] * steps
 
 
 def moving_average_from_windows(

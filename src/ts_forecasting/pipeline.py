@@ -17,6 +17,7 @@ from sklearn.preprocessing import StandardScaler
 
 from .baselines import (
     RidgeForecaster,
+    drift_from_windows,
     moving_average_from_windows,
     persistence_from_windows,
     seasonal_naive_from_windows,
@@ -185,6 +186,11 @@ def run_pipeline(args: argparse.Namespace) -> dict:
 
     predictions["persistence"] = inverse_target(
         persistence_from_windows(test_windows.x, test_windows.target_index, config.horizon),
+        scale_info,
+        config.target_column,
+    )
+    predictions["drift"] = inverse_target(
+        drift_from_windows(test_windows.x, test_windows.target_index, config.horizon),
         scale_info,
         config.target_column,
     )
