@@ -35,6 +35,18 @@ def smape(y_true, y_pred, epsilon: float = 1e-8) -> float:
     return float(np.mean(2 * np.abs(pred - true) / denominator) * 100)
 
 
+def skill_score(y_true, y_pred, baseline_pred, metric: str = "mae") -> float:
+    true, pred = _as_matching_arrays(y_true, y_pred)
+    _, baseline = _as_matching_arrays(true, baseline_pred)
+    metric_fn = {"mae": mae, "rmse": rmse, "wape": wape}.get(metric)
+    if metric_fn is None:
+        raise ValueError("metric must be one of: mae, rmse, wape")
+    baseline_error = metric_fn(true, baseline)
+    if baseline_error == 0:
+        return float("nan")
+    return float(1.0 - metric_fn(true, pred) / baseline_error)
+
+
 def directional_accuracy(y_true, y_pred) -> float:
     true, pred = _as_matching_arrays(y_true, y_pred)
     true = true.reshape(true.shape[0], -1)

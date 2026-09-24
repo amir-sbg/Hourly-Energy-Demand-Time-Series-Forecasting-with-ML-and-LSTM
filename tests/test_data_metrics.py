@@ -17,6 +17,7 @@ from ts_forecasting.metrics import (
     directional_accuracy,
     per_horizon_metrics,
     rank_models,
+    skill_score,
     wape,
 )
 
@@ -143,6 +144,14 @@ def test_forecast_bias_and_wape_are_scale_aware() -> None:
 
     assert mean_error(true, pred) == pytest.approx(2.0)
     assert wape(true, pred) == pytest.approx(10.0)
+
+
+def test_skill_score_compares_against_baseline_error() -> None:
+    true = np.array([10.0, 12.0, 14.0])
+    model = np.array([10.0, 13.0, 13.0])
+    baseline = np.array([8.0, 10.0, 16.0])
+
+    assert skill_score(true, model, baseline, metric="mae") == pytest.approx(0.5)
 
 
 def test_rank_models_orders_by_primary_metric() -> None:
