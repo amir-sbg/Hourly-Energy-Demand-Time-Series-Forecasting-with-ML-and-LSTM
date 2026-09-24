@@ -1,7 +1,13 @@
 import numpy as np
 
 from ts_forecasting.data import SplitFrames, generate_synthetic_demand
-from ts_forecasting.pipeline import ScaleInfo, inverse_target, scale_splits, select_feature_columns
+from ts_forecasting.pipeline import (
+    ScaleInfo,
+    inverse_target,
+    model_skill_scores,
+    scale_splits,
+    select_feature_columns,
+)
 
 
 def test_scale_splits_fit_only_on_train_partition() -> None:
@@ -52,3 +58,16 @@ def test_feature_selection_keeps_available_exogenous_columns() -> None:
     columns = select_feature_columns(frame, "load")
 
     assert "temperature" in columns
+
+
+def test_model_skill_scores_use_seasonal_reference() -> None:
+    y_true = np.array([[10.0, 12.0]])
+    predictions = {
+        "seasonal_naive": np.array([[8.0, 10.0]]),
+        "ridge": np.array([[10.0, 13.0]]),
+    }
+
+    scores = model_skill_scores(y_true, predictions)
+
+    assert scores["seasonal_naive"]["skill_vs_seasonal_naive_mae"] == 0.0
+    assert scores["ridge"]["skill_vs_seasonal_naive_mae"] > 0.0

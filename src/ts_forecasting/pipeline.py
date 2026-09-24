@@ -33,7 +33,7 @@ from .data import (
     rolling_origin_folds,
     time_series_diagnostics,
 )
-from .metrics import forecast_metrics, per_horizon_metrics, rank_models
+from .metrics import forecast_metrics, per_horizon_metrics, rank_models, skill_score
 from .models import (
     LSTMForecaster,
     TorchTrainConfig,
@@ -115,6 +115,33 @@ def select_feature_columns(frame: pd.DataFrame, target_column: str) -> list[str]
     if missing:
         raise ValueError(f"missing feature columns after feature engineering: {missing}")
     return columns
+
+
+def model_skill_scores(
+    y_true: np.ndarray,
+    predictions: dict[str, np.ndarray],
+    baseline_name: str = "seasonal_naive",
+) -> dict[str, dict[str, float]]:
+    if baseline_name not in predictions:
+        raise ValueError(f"missing baseline predictions: {baseline_name}")
+    baseline = predictions[baseline_name]
+    return {
+        name: {
+            f"skill_vs_{baseline_name}_mae": skill_score(
+                y_true,
+                values,
+                baseline,
+                metric="mae",
+            ),
+            f"skill_vs_{baseline_name}_rmse": skill_score(
+                y_true,
+                values,
+                baseline,
+                metric="rmse",
+            ),
+        }
+        for name, values in predictions.items()
+    }
 
 
 def run_pipeline(args: argparse.Namespace) -> dict:
@@ -271,6 +298,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         name: forecast_metrics(y_test, values, insample=train_insample, seasonality=24)
         for name, values in predictions.items()
     }
+    skill_scores = model_skill_scores(y_test, predictions, baseline_name="seasonal_naive")
     model_ranking = rank_models(metrics, primary_metric="mae")
     horizon_rows = []
     for name, values in predictions.items():
@@ -291,6 +319,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             "rolling_origin_folds": [fold.__dict__ for fold in backtest_folds],
             "scale": scale_info.__dict__,
             "metrics": metrics,
+            "skill_scores": skill_scores,
             "model_ranking": model_ranking,
             "best_model": model_ranking[0]["model"],
             "training_summary": training_summary,

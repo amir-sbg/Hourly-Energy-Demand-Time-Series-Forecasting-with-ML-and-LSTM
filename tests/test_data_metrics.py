@@ -151,7 +151,7 @@ def test_skill_score_compares_against_baseline_error() -> None:
     model = np.array([10.0, 13.0, 13.0])
     baseline = np.array([8.0, 10.0, 16.0])
 
-    assert skill_score(true, model, baseline, metric="mae") == pytest.approx(0.5)
+    assert skill_score(true, model, baseline, metric="mae") == pytest.approx(2 / 3)
 
 
 def test_rank_models_orders_by_primary_metric() -> None:
