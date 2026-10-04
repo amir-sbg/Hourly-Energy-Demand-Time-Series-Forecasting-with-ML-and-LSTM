@@ -16,6 +16,7 @@ from ts_forecasting.metrics import (
     mean_error,
     directional_accuracy,
     per_horizon_metrics,
+    peak_demand_metrics,
     rank_models,
     skill_score,
     wape,
@@ -144,6 +145,17 @@ def test_forecast_bias_and_wape_are_scale_aware() -> None:
 
     assert mean_error(true, pred) == pytest.approx(2.0)
     assert wape(true, pred) == pytest.approx(10.0)
+
+
+def test_peak_metrics_focus_on_high_demand_errors() -> None:
+    true = np.array([10.0, 20.0, 30.0, 40.0])
+    pred = np.array([10.0, 20.0, 30.0, 35.0])
+
+    report = peak_demand_metrics(true, pred, quantile=0.75)
+
+    assert report["peak_rows"] == 1
+    assert report["peak_mae"] == pytest.approx(5.0)
+    assert report["peak_mean_error"] == pytest.approx(-5.0)
 
 
 def test_skill_score_compares_against_baseline_error() -> None:

@@ -35,6 +35,21 @@ def smape(y_true, y_pred, epsilon: float = 1e-8) -> float:
     return float(np.mean(2 * np.abs(pred - true) / denominator) * 100)
 
 
+def peak_demand_metrics(y_true, y_pred, quantile: float = 0.90) -> dict[str, float | int]:
+    true, pred = _as_matching_arrays(y_true, y_pred)
+    if not 0.0 < quantile < 1.0:
+        raise ValueError("quantile must be between 0 and 1")
+    threshold = float(np.quantile(true, quantile))
+    mask = true >= threshold
+    residuals = pred[mask] - true[mask]
+    return {
+        "peak_threshold": threshold,
+        "peak_rows": int(mask.sum()),
+        "peak_mae": float(np.mean(np.abs(residuals))),
+        "peak_mean_error": float(np.mean(residuals)),
+    }
+
+
 def skill_score(y_true, y_pred, baseline_pred, metric: str = "mae") -> float:
     true, pred = _as_matching_arrays(y_true, y_pred)
     _, baseline = _as_matching_arrays(true, baseline_pred)
@@ -71,7 +86,7 @@ def mase(y_true, y_pred, insample, seasonality: int = 1) -> float:
     return float(np.mean(np.abs(true - pred)) / scale)
 
 
-def forecast_metrics(y_true, y_pred, insample=None, seasonality: int = 24) -> dict[str, float]:
+def forecast_metrics(y_true, y_pred, insample=None, seasonality: int = 24) -> dict[str, float | int]:
     report = {
         "mae": mae(y_true, y_pred),
         "rmse": rmse(y_true, y_pred),
@@ -80,6 +95,7 @@ def forecast_metrics(y_true, y_pred, insample=None, seasonality: int = 24) -> di
         "wape": wape(y_true, y_pred),
         "smape": smape(y_true, y_pred),
         "directional_accuracy": directional_accuracy(y_true, y_pred),
+        **peak_demand_metrics(y_true, y_pred),
     }
     if insample is not None:
         report["mase"] = mase(y_true, y_pred, insample, seasonality=seasonality)
