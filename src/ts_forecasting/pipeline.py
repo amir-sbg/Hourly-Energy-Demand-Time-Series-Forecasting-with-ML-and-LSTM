@@ -34,6 +34,7 @@ from .data import (
     time_series_diagnostics,
 )
 from .metrics import (
+    block_bootstrap_mae_interval,
     forecast_metrics,
     diebold_mariano_test,
     per_horizon_metrics,
@@ -319,6 +320,15 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         )
         for name, values in predictions.items()
     }
+    mae_intervals = {
+        name: block_bootstrap_mae_interval(
+            y_test,
+            values,
+            block_size=min(24, len(y_test)),
+            seed=config.seed,
+        )
+        for name, values in predictions.items()
+    }
     model_ranking = rank_models(metrics, primary_metric="mae")
     horizon_rows = []
     for name, values in predictions.items():
@@ -342,6 +352,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             "skill_scores": skill_scores,
             "one_step_residual_autocorrelation": residual_diagnostics,
             "diebold_mariano_vs_seasonal_naive": significance_tests,
+            "mae_block_bootstrap_intervals": mae_intervals,
             "model_ranking": model_ranking,
             "best_model": model_ranking[0]["model"],
             "training_summary": training_summary,

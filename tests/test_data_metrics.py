@@ -11,6 +11,7 @@ from ts_forecasting.data import (
     time_series_diagnostics,
 )
 from ts_forecasting.metrics import (
+    block_bootstrap_mae_interval,
     forecast_metrics,
     mase,
     mean_error,
@@ -180,6 +181,17 @@ def test_diebold_mariano_compares_paired_forecast_losses() -> None:
     assert report["mean_loss_differential"] == pytest.approx(-2.0)
     assert report["dm_statistic"] < 0.0
     assert report["p_value"] == 0.0
+
+
+def test_block_bootstrap_interval_is_reproducible() -> None:
+    true = np.arange(48, dtype=float)[:, None]
+    pred = true + np.sin(np.arange(48, dtype=float))[:, None]
+
+    first = block_bootstrap_mae_interval(true, pred, block_size=6, samples=200, seed=5)
+    second = block_bootstrap_mae_interval(true, pred, block_size=6, samples=200, seed=5)
+
+    assert first == second
+    assert first["ci_low"] <= first["mae"] <= first["ci_high"]
 
 
 def test_skill_score_compares_against_baseline_error() -> None:

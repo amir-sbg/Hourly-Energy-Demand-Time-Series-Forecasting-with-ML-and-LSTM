@@ -108,6 +108,40 @@ def diebold_mariano_test(
     }
 
 
+def block_bootstrap_mae_interval(
+    y_true,
+    y_pred,
+    *,
+    block_size: int = 24,
+    samples: int = 500,
+    confidence: float = 0.95,
+    seed: int = 42,
+) -> dict[str, float]:
+    true, pred = _as_matching_arrays(y_true, y_pred)
+    if block_size < 1 or samples < 1:
+        raise ValueError("block_size and samples must be positive")
+    if not 0.0 < confidence < 1.0:
+        raise ValueError("confidence must be between 0 and 1")
+
+    losses = np.abs(pred - true).reshape(true.shape[0], -1).mean(axis=1)
+    sample_count = len(losses)
+    block_size = min(block_size, sample_count)
+    blocks_per_sample = int(np.ceil(sample_count / block_size))
+    offsets = np.arange(block_size)
+    rng = np.random.default_rng(seed)
+    estimates = []
+    for _ in range(samples):
+        starts = rng.integers(0, sample_count, size=blocks_per_sample)
+        indices = ((starts[:, None] + offsets[None, :]) % sample_count).reshape(-1)[:sample_count]
+        estimates.append(float(np.mean(losses[indices])))
+    tail = (1.0 - confidence) / 2.0
+    return {
+        "mae": float(np.mean(losses)),
+        "ci_low": float(np.quantile(estimates, tail)),
+        "ci_high": float(np.quantile(estimates, 1.0 - tail)),
+    }
+
+
 def skill_score(y_true, y_pred, baseline_pred, metric: str = "mae") -> float:
     true, pred = _as_matching_arrays(y_true, y_pred)
     _, baseline = _as_matching_arrays(true, baseline_pred)
