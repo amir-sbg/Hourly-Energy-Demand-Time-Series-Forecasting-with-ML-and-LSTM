@@ -18,6 +18,7 @@ from ts_forecasting.metrics import (
     per_horizon_metrics,
     peak_demand_metrics,
     rank_models,
+    residual_autocorrelation,
     skill_score,
     wape,
 )
@@ -156,6 +157,16 @@ def test_peak_metrics_focus_on_high_demand_errors() -> None:
     assert report["peak_rows"] == 1
     assert report["peak_mae"] == pytest.approx(5.0)
     assert report["peak_mean_error"] == pytest.approx(-5.0)
+
+
+def test_residual_autocorrelation_detects_serial_error() -> None:
+    true = np.zeros(8)
+    correlated_errors = np.arange(8, dtype=float)
+
+    report = residual_autocorrelation(true, correlated_errors, lags=(1, 3))
+
+    assert report["lag_1"] > report["lag_3"]
+    assert residual_autocorrelation(true, true, lags=(1,))["lag_1"] == 0.0
 
 
 def test_skill_score_compares_against_baseline_error() -> None:

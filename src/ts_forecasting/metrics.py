@@ -50,6 +50,26 @@ def peak_demand_metrics(y_true, y_pred, quantile: float = 0.90) -> dict[str, flo
     }
 
 
+def residual_autocorrelation(
+    y_true,
+    y_pred,
+    lags: tuple[int, ...] = (1, 24),
+) -> dict[str, float]:
+    true, pred = _as_matching_arrays(y_true, y_pred)
+    residuals = (pred - true).reshape(-1)
+    if not lags or any(lag < 1 for lag in lags):
+        raise ValueError("lags must contain positive integers")
+    centered = residuals - residuals.mean()
+    denominator = float(np.dot(centered, centered))
+    report = {}
+    for lag in lags:
+        if lag >= len(centered) or denominator == 0.0:
+            report[f"lag_{lag}"] = 0.0
+        else:
+            report[f"lag_{lag}"] = float(np.dot(centered[lag:], centered[:-lag]) / denominator)
+    return report
+
+
 def skill_score(y_true, y_pred, baseline_pred, metric: str = "mae") -> float:
     true, pred = _as_matching_arrays(y_true, y_pred)
     _, baseline = _as_matching_arrays(true, baseline_pred)

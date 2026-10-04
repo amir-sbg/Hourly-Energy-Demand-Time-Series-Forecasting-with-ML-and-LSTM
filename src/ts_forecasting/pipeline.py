@@ -33,7 +33,13 @@ from .data import (
     rolling_origin_folds,
     time_series_diagnostics,
 )
-from .metrics import forecast_metrics, per_horizon_metrics, rank_models, skill_score
+from .metrics import (
+    forecast_metrics,
+    per_horizon_metrics,
+    rank_models,
+    residual_autocorrelation,
+    skill_score,
+)
 from .models import (
     LSTMForecaster,
     TorchTrainConfig,
@@ -299,6 +305,10 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         for name, values in predictions.items()
     }
     skill_scores = model_skill_scores(y_test, predictions, baseline_name="seasonal_naive")
+    residual_diagnostics = {
+        name: residual_autocorrelation(y_test[:, 0], values[:, 0])
+        for name, values in predictions.items()
+    }
     model_ranking = rank_models(metrics, primary_metric="mae")
     horizon_rows = []
     for name, values in predictions.items():
@@ -320,6 +330,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             "scale": scale_info.__dict__,
             "metrics": metrics,
             "skill_scores": skill_scores,
+            "one_step_residual_autocorrelation": residual_diagnostics,
             "model_ranking": model_ranking,
             "best_model": model_ranking[0]["model"],
             "training_summary": training_summary,
