@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from math import erfc, sqrt
+
 import numpy as np
 
 
@@ -68,6 +70,42 @@ def residual_autocorrelation(
         else:
             report[f"lag_{lag}"] = float(np.dot(centered[lag:], centered[:-lag]) / denominator)
     return report
+
+
+def diebold_mariano_test(
+    y_true,
+    model_pred,
+    baseline_pred,
+    horizon: int = 1,
+) -> dict[str, float]:
+    true, model = _as_matching_arrays(y_true, model_pred)
+    _, baseline = _as_matching_arrays(true, baseline_pred)
+    if horizon < 1:
+        raise ValueError("horizon must be positive")
+
+    model_loss = np.abs(model - true).reshape(true.shape[0], -1).mean(axis=1)
+    baseline_loss = np.abs(baseline - true).reshape(true.shape[0], -1).mean(axis=1)
+    differential = model_loss - baseline_loss
+    mean_differential = float(np.mean(differential))
+    centered = differential - mean_differential
+    sample_count = len(differential)
+    long_run_variance = float(np.dot(centered, centered) / sample_count)
+    max_lag = min(horizon - 1, sample_count - 1)
+    for lag in range(1, max_lag + 1):
+        covariance = float(np.dot(centered[lag:], centered[:-lag]) / sample_count)
+        long_run_variance += 2.0 * (1.0 - lag / horizon) * covariance
+
+    variance_of_mean = max(long_run_variance / sample_count, 0.0)
+    if variance_of_mean == 0.0:
+        statistic = 0.0 if mean_differential == 0.0 else float(np.sign(mean_differential) * np.inf)
+    else:
+        statistic = mean_differential / sqrt(variance_of_mean)
+    p_value = 0.0 if not np.isfinite(statistic) else erfc(abs(statistic) / sqrt(2.0))
+    return {
+        "mean_loss_differential": mean_differential,
+        "dm_statistic": statistic,
+        "p_value": p_value,
+    }
 
 
 def skill_score(y_true, y_pred, baseline_pred, metric: str = "mae") -> float:

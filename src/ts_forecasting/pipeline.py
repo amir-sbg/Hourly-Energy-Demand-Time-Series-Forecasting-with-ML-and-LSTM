@@ -35,6 +35,7 @@ from .data import (
 )
 from .metrics import (
     forecast_metrics,
+    diebold_mariano_test,
     per_horizon_metrics,
     rank_models,
     residual_autocorrelation,
@@ -309,6 +310,15 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         name: residual_autocorrelation(y_test[:, 0], values[:, 0])
         for name, values in predictions.items()
     }
+    significance_tests = {
+        name: diebold_mariano_test(
+            y_test,
+            values,
+            predictions["seasonal_naive"],
+            horizon=config.horizon,
+        )
+        for name, values in predictions.items()
+    }
     model_ranking = rank_models(metrics, primary_metric="mae")
     horizon_rows = []
     for name, values in predictions.items():
@@ -331,6 +341,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             "metrics": metrics,
             "skill_scores": skill_scores,
             "one_step_residual_autocorrelation": residual_diagnostics,
+            "diebold_mariano_vs_seasonal_naive": significance_tests,
             "model_ranking": model_ranking,
             "best_model": model_ranking[0]["model"],
             "training_summary": training_summary,

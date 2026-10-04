@@ -15,6 +15,7 @@ from ts_forecasting.metrics import (
     mase,
     mean_error,
     directional_accuracy,
+    diebold_mariano_test,
     per_horizon_metrics,
     peak_demand_metrics,
     rank_models,
@@ -167,6 +168,18 @@ def test_residual_autocorrelation_detects_serial_error() -> None:
 
     assert report["lag_1"] > report["lag_3"]
     assert residual_autocorrelation(true, true, lags=(1,))["lag_1"] == 0.0
+
+
+def test_diebold_mariano_compares_paired_forecast_losses() -> None:
+    true = np.arange(20, dtype=float)[:, None]
+    model = true.copy()
+    baseline = true + 2.0
+
+    report = diebold_mariano_test(true, model, baseline, horizon=1)
+
+    assert report["mean_loss_differential"] == pytest.approx(-2.0)
+    assert report["dm_statistic"] < 0.0
+    assert report["p_value"] == 0.0
 
 
 def test_skill_score_compares_against_baseline_error() -> None:
