@@ -23,6 +23,7 @@ class ForecastConfig:
     num_layers: int = 1
     dropout: float = 0.10
     patience: int = 5
+    horizon_decay: float = 1.0
 
     data_dir: Path = Path("data")
     artifact_dir: Path = Path("artifacts")
@@ -49,6 +50,8 @@ class ForecastConfig:
             raise ValueError("dropout must be in [0, 1)")
         if self.patience < 1:
             raise ValueError("patience must be positive")
+        if self.horizon_decay <= 0:
+            raise ValueError("horizon_decay must be positive")
 
     def to_dict(self) -> dict:
         payload = asdict(self)

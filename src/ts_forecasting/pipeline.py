@@ -163,6 +163,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         learning_rate=args.learning_rate,
         hidden_size=args.hidden_size,
         patience=args.patience,
+        horizon_decay=args.horizon_decay,
         seed=args.seed,
         artifact_dir=args.artifact_dir,
         report_dir=args.report_dir,
@@ -284,6 +285,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
                 learning_rate=config.learning_rate,
                 weight_decay=config.weight_decay,
                 patience=config.patience,
+                horizon_decay=config.horizon_decay,
             ),
             device=device,
         )
@@ -436,6 +438,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--hidden-size", type=int, default=64)
     parser.add_argument("--patience", type=int, default=4)
+    parser.add_argument(
+        "--horizon-decay",
+        type=float,
+        default=1.0,
+        help="Geometric loss weight across forecast steps; values below one emphasize near-term errors.",
+    )
     parser.add_argument("--ridge-alpha", type=float, default=1.0)
     parser.add_argument("--moving-average-window", type=int, default=24)
     parser.add_argument("--seed", type=int, default=42)

@@ -48,6 +48,22 @@ class LSTMForecaster(nn.Module):
         return self.head(hidden[-1])
 
 
+class HorizonWeightedMSELoss(nn.Module):
+    def __init__(self, decay: float = 1.0) -> None:
+        super().__init__()
+        if decay <= 0:
+            raise ValueError("horizon decay must be positive")
+        self.decay = decay
+
+    def forward(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        if prediction.shape != target.shape or prediction.ndim != 2:
+            raise ValueError("prediction and target must share shape (batch, horizon)")
+        steps = torch.arange(prediction.shape[1], device=prediction.device, dtype=prediction.dtype)
+        weights = self.decay**steps
+        weights = weights / weights.mean()
+        return ((prediction - target).square() * weights).mean()
+
+
 @dataclass(frozen=True)
 class TorchTrainConfig:
     epochs: int = 25
@@ -56,6 +72,7 @@ class TorchTrainConfig:
     weight_decay: float = 1e-4
     patience: int = 5
     gradient_clip: float = 1.0
+    horizon_decay: float = 1.0
 
     def __post_init__(self) -> None:
         if self.epochs < 1 or self.batch_size < 1:
@@ -64,6 +81,8 @@ class TorchTrainConfig:
             raise ValueError("optimizer settings are invalid")
         if self.patience < 1 or self.gradient_clip <= 0:
             raise ValueError("patience and gradient_clip must be positive")
+        if self.horizon_decay <= 0:
+            raise ValueError("horizon_decay must be positive")
 
 
 def make_torch_loader(
@@ -100,7 +119,7 @@ def train_lstm_forecaster(
         lr=config.learning_rate,
         weight_decay=config.weight_decay,
     )
-    loss_fn = nn.MSELoss()
+    loss_fn = HorizonWeightedMSELoss(decay=config.horizon_decay)
     best_state = copy.deepcopy(model.state_dict())
     best_validation_loss = float("inf")
     best_epoch = 0

@@ -3,6 +3,7 @@ import pytest
 import torch
 
 from ts_forecasting.models import (
+    HorizonWeightedMSELoss,
     LSTMForecaster,
     TorchTrainConfig,
     make_torch_loader,
@@ -16,6 +17,25 @@ def test_lstm_forecaster_outputs_full_horizon() -> None:
     output = model(torch.zeros(4, 12, 3))
 
     assert output.shape == (4, 5)
+
+
+def test_horizon_weighted_loss_can_prioritize_near_term_errors() -> None:
+    target = torch.zeros(1, 3)
+    near_error = torch.tensor([[1.0, 0.0, 0.0]])
+    far_error = torch.tensor([[0.0, 0.0, 1.0]])
+    loss = HorizonWeightedMSELoss(decay=0.5)
+
+    assert loss(near_error, target) > loss(far_error, target)
+    assert HorizonWeightedMSELoss(decay=1.0)(near_error, target) == pytest.approx(
+        HorizonWeightedMSELoss(decay=1.0)(far_error, target)
+    )
+
+
+def test_horizon_weighted_loss_validates_decay_and_shape() -> None:
+    with pytest.raises(ValueError, match="decay"):
+        HorizonWeightedMSELoss(decay=0.0)
+    with pytest.raises(ValueError, match="shape"):
+        HorizonWeightedMSELoss()(torch.zeros(2, 3), torch.zeros(2, 2))
 
 
 def test_torch_loader_rejects_sample_mismatch() -> None:
