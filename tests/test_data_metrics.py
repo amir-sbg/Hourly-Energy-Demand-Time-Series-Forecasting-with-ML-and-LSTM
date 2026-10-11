@@ -12,12 +12,14 @@ from ts_forecasting.data import (
 )
 from ts_forecasting.metrics import (
     block_bootstrap_mae_interval,
+    conformal_prediction_interval,
     forecast_metrics,
     mase,
     mean_error,
     directional_accuracy,
     diebold_mariano_test,
     per_horizon_metrics,
+    prediction_interval_metrics,
     peak_demand_metrics,
     rank_models,
     residual_autocorrelation,
@@ -192,6 +194,35 @@ def test_block_bootstrap_interval_is_reproducible() -> None:
 
     assert first == second
     assert first["ci_low"] <= first["mae"] <= first["ci_high"]
+
+
+def test_conformal_interval_uses_horizon_specific_residuals() -> None:
+    calibration_true = np.array([[1.0, 10.0], [2.0, 12.0], [3.0, 14.0]])
+    calibration_pred = np.array([[1.0, 8.0], [2.0, 10.0], [3.0, 12.0]])
+    forecast = np.array([[5.0, 20.0]])
+
+    lower, upper = conformal_prediction_interval(
+        calibration_true,
+        calibration_pred,
+        forecast,
+        alpha=0.25,
+    )
+
+    np.testing.assert_allclose(lower, [[5.0, 18.0]])
+    np.testing.assert_allclose(upper, [[5.0, 22.0]])
+
+
+def test_prediction_interval_metrics_report_coverage_and_width() -> None:
+    report = prediction_interval_metrics(
+        np.array([[1.0, 5.0]]),
+        np.array([[0.0, 2.0]]),
+        np.array([[2.0, 4.0]]),
+        alpha=0.1,
+    )
+
+    assert report["coverage"] == 0.5
+    assert report["mean_width"] == 2.0
+    assert report["winkler_score"] > report["mean_width"]
 
 
 def test_skill_score_compares_against_baseline_error() -> None:

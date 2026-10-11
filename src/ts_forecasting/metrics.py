@@ -142,6 +142,58 @@ def block_bootstrap_mae_interval(
     }
 
 
+def conformal_prediction_interval(
+    calibration_true,
+    calibration_pred,
+    forecast,
+    *,
+    alpha: float = 0.10,
+) -> tuple[np.ndarray, np.ndarray]:
+    true, calibrated = _as_matching_arrays(calibration_true, calibration_pred)
+    forecast = np.asarray(forecast, dtype=np.float64)
+    if forecast.ndim != 2 or forecast.shape[1] != true.shape[1]:
+        raise ValueError("forecast must have shape (samples, calibration horizon)")
+    if not np.isfinite(forecast).all():
+        raise ValueError("forecast must contain finite values")
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must be between 0 and 1")
+
+    scores = np.abs(true - calibrated)
+    sample_count = scores.shape[0]
+    quantile_level = min(np.ceil((sample_count + 1) * (1.0 - alpha)) / sample_count, 1.0)
+    radius = np.quantile(scores, quantile_level, axis=0, method="higher")
+    return forecast - radius, forecast + radius
+
+
+def prediction_interval_metrics(
+    y_true,
+    lower,
+    upper,
+    *,
+    alpha: float = 0.10,
+) -> dict[str, float]:
+    true, lower_bound = _as_matching_arrays(y_true, lower)
+    _, upper_bound = _as_matching_arrays(true, upper)
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must be between 0 and 1")
+    if np.any(lower_bound > upper_bound):
+        raise ValueError("lower interval bounds must not exceed upper bounds")
+
+    width = upper_bound - lower_bound
+    below = true < lower_bound
+    above = true > upper_bound
+    interval_score = (
+        width
+        + (2.0 / alpha) * (lower_bound - true) * below
+        + (2.0 / alpha) * (true - upper_bound) * above
+    )
+    return {
+        "coverage": float(np.mean(~below & ~above)),
+        "mean_width": float(np.mean(width)),
+        "winkler_score": float(np.mean(interval_score)),
+    }
+
+
 def skill_score(y_true, y_pred, baseline_pred, metric: str = "mae") -> float:
     true, pred = _as_matching_arrays(y_true, y_pred)
     _, baseline = _as_matching_arrays(true, baseline_pred)

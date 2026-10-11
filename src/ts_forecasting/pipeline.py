@@ -35,9 +35,11 @@ from .data import (
 )
 from .metrics import (
     block_bootstrap_mae_interval,
+    conformal_prediction_interval,
     forecast_metrics,
     diebold_mariano_test,
     per_horizon_metrics,
+    prediction_interval_metrics,
     rank_models,
     residual_autocorrelation,
     skill_score,
@@ -164,6 +166,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         hidden_size=args.hidden_size,
         patience=args.patience,
         horizon_decay=args.horizon_decay,
+        interval_alpha=args.interval_alpha,
         seed=args.seed,
         artifact_dir=args.artifact_dir,
         report_dir=args.report_dir,
@@ -216,39 +219,30 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         config.horizon,
     )
 
+    y_validation = inverse_target(validation_windows.y, scale_info, config.target_column)
     y_test = inverse_target(test_windows.y, scale_info, config.target_column)
     train_insample = splits.train[config.target_column].to_numpy(dtype=np.float32)
-    predictions: dict[str, np.ndarray] = {}
-
-    predictions["persistence"] = inverse_target(
-        persistence_from_windows(test_windows.x, test_windows.target_index, config.horizon),
+    predictions = _baseline_predictions(
+        test_windows,
         scale_info,
-        config.target_column,
+        config,
+        moving_average_window=args.moving_average_window,
     )
-    predictions["drift"] = inverse_target(
-        drift_from_windows(test_windows.x, test_windows.target_index, config.horizon),
+    calibration_predictions = _baseline_predictions(
+        validation_windows,
         scale_info,
-        config.target_column,
-    )
-    predictions["moving_average"] = inverse_target(
-        moving_average_from_windows(
-            test_windows.x,
-            test_windows.target_index,
-            config.horizon,
-            window_size=args.moving_average_window,
-        ),
-        scale_info,
-        config.target_column,
-    )
-    predictions["seasonal_naive"] = inverse_target(
-        seasonal_naive_from_windows(test_windows.x, test_windows.target_index, config.horizon, seasonality=24),
-        scale_info,
-        config.target_column,
+        config,
+        moving_average_window=args.moving_average_window,
     )
 
     ridge = RidgeForecaster(alpha=args.ridge_alpha).fit(train_windows.x, train_windows.y)
     predictions["ridge"] = inverse_target(
         ridge.predict(test_windows.x),
+        scale_info,
+        config.target_column,
+    )
+    calibration_predictions["ridge"] = inverse_target(
+        ridge.predict(validation_windows.x),
         scale_info,
         config.target_column,
     )
@@ -303,6 +297,11 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             scale_info,
             config.target_column,
         )
+        calibration_predictions["lstm"] = inverse_target(
+            predict_lstm(model, validation_windows.x, device, batch_size=config.batch_size),
+            scale_info,
+            config.target_column,
+        )
 
     metrics = {
         name: forecast_metrics(y_test, values, insample=train_insample, seasonality=24)
@@ -331,6 +330,20 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         )
         for name, values in predictions.items()
     }
+    conformal_intervals = {}
+    for name, values in predictions.items():
+        lower, upper = conformal_prediction_interval(
+            y_validation,
+            calibration_predictions[name],
+            values,
+            alpha=config.interval_alpha,
+        )
+        conformal_intervals[name] = prediction_interval_metrics(
+            y_test,
+            lower,
+            upper,
+            alpha=config.interval_alpha,
+        )
     model_ranking = rank_models(metrics, primary_metric="mae")
     horizon_rows = []
     for name, values in predictions.items():
@@ -355,6 +368,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             "one_step_residual_autocorrelation": residual_diagnostics,
             "diebold_mariano_vs_seasonal_naive": significance_tests,
             "mae_block_bootstrap_intervals": mae_intervals,
+            "conformal_prediction_intervals": conformal_intervals,
             "model_ranking": model_ranking,
             "best_model": model_ranking[0]["model"],
             "training_summary": training_summary,
@@ -371,7 +385,39 @@ def run_pipeline(args: argparse.Namespace) -> dict:
     return {
         "metrics": metrics,
         "model_ranking": model_ranking,
+        "conformal_prediction_intervals": conformal_intervals,
         "training_summary": training_summary,
+    }
+
+
+def _baseline_predictions(
+    windows,
+    scale_info: ScaleInfo,
+    config: ForecastConfig,
+    *,
+    moving_average_window: int,
+) -> dict[str, np.ndarray]:
+    scaled = {
+        "persistence": persistence_from_windows(
+            windows.x, windows.target_index, config.horizon
+        ),
+        "drift": drift_from_windows(windows.x, windows.target_index, config.horizon),
+        "moving_average": moving_average_from_windows(
+            windows.x,
+            windows.target_index,
+            config.horizon,
+            window_size=moving_average_window,
+        ),
+        "seasonal_naive": seasonal_naive_from_windows(
+            windows.x,
+            windows.target_index,
+            config.horizon,
+            seasonality=24,
+        ),
+    }
+    return {
+        name: inverse_target(values, scale_info, config.target_column)
+        for name, values in scaled.items()
     }
 
 
@@ -443,6 +489,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=1.0,
         help="Geometric loss weight across forecast steps; values below one emphasize near-term errors.",
+    )
+    parser.add_argument(
+        "--interval-alpha",
+        type=float,
+        default=0.10,
+        help="Miscoverage rate for validation-calibrated conformal intervals.",
     )
     parser.add_argument("--ridge-alpha", type=float, default=1.0)
     parser.add_argument("--moving-average-window", type=int, default=24)
