@@ -41,6 +41,7 @@ from .metrics import (
     diebold_mariano_test,
     per_horizon_metrics,
     prediction_interval_metrics,
+    prediction_interval_metrics_by_horizon,
     rank_models,
     residual_autocorrelation,
     skill_score,
@@ -335,6 +336,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         for name, values in predictions.items()
     }
     conformal_intervals = {}
+    interval_horizon_rows = []
     for name, values in predictions.items():
         lower, upper = conformal_prediction_interval(
             y_validation,
@@ -347,6 +349,15 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             lower,
             upper,
             alpha=config.interval_alpha,
+        )
+        interval_horizon_rows.extend(
+            {"model": name, **row}
+            for row in prediction_interval_metrics_by_horizon(
+                y_test,
+                lower,
+                upper,
+                alpha=config.interval_alpha,
+            )
         )
     model_ranking = rank_models(metrics, primary_metric="mae")
     horizon_rows = []
@@ -373,6 +384,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             "diebold_mariano_vs_seasonal_naive": significance_tests,
             "mae_block_bootstrap_intervals": mae_intervals,
             "conformal_prediction_intervals": conformal_intervals,
+            "conformal_intervals_by_horizon": interval_horizon_rows,
             "model_ranking": model_ranking,
             "best_model": model_ranking[0]["model"],
             "training_summary": training_summary,
@@ -381,6 +393,10 @@ def run_pipeline(args: argparse.Namespace) -> dict:
     )
     pd.DataFrame(model_ranking).to_csv(config.report_dir / "model_ranking.csv", index=False)
     pd.DataFrame(horizon_rows).to_csv(config.report_dir / "per_horizon_metrics.csv", index=False)
+    pd.DataFrame(interval_horizon_rows).to_csv(
+        config.report_dir / "interval_horizon_metrics.csv",
+        index=False,
+    )
     _save_predictions(y_test, predictions, config.report_dir / "predictions.csv")
     if history:
         pd.DataFrame(history).to_csv(config.artifact_dir / "lstm_training_history.csv", index=False)
@@ -390,6 +406,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         "metrics": metrics,
         "model_ranking": model_ranking,
         "conformal_prediction_intervals": conformal_intervals,
+        "conformal_intervals_by_horizon": interval_horizon_rows,
         "training_summary": training_summary,
     }
 

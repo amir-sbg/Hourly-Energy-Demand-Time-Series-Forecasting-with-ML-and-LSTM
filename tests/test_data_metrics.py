@@ -21,6 +21,7 @@ from ts_forecasting.metrics import (
     diebold_mariano_test,
     per_horizon_metrics,
     prediction_interval_metrics,
+    prediction_interval_metrics_by_horizon,
     peak_demand_metrics,
     rank_models,
     residual_autocorrelation,
@@ -241,6 +242,19 @@ def test_prediction_interval_metrics_report_coverage_and_width() -> None:
     assert report["coverage"] == 0.5
     assert report["mean_width"] == 2.0
     assert report["winkler_score"] > report["mean_width"]
+
+
+def test_interval_metrics_by_horizon_find_undercoverage() -> None:
+    true = np.array([[1.0, 5.0], [2.0, 8.0]])
+    lower = np.array([[0.0, 4.0], [1.0, 6.0]])
+    upper = np.array([[2.0, 6.0], [3.0, 7.0]])
+
+    rows = prediction_interval_metrics_by_horizon(true, lower, upper, alpha=0.1)
+
+    assert rows[0]["coverage"] == pytest.approx(1.0)
+    assert rows[0]["coverage_error"] == pytest.approx(0.1)
+    assert rows[1]["coverage"] == pytest.approx(0.5)
+    assert rows[1]["coverage_error"] == pytest.approx(-0.4)
 
 
 def test_skill_score_compares_against_baseline_error() -> None:

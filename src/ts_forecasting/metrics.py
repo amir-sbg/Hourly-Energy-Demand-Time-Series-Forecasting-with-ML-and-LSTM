@@ -194,6 +194,42 @@ def prediction_interval_metrics(
     }
 
 
+def prediction_interval_metrics_by_horizon(
+    y_true,
+    lower,
+    upper,
+    *,
+    alpha: float = 0.10,
+) -> list[dict[str, float | int]]:
+    true, lower_bound = _as_matching_arrays(y_true, lower)
+    _, upper_bound = _as_matching_arrays(true, upper)
+    if true.ndim == 1:
+        true = true[:, None]
+        lower_bound = lower_bound[:, None]
+        upper_bound = upper_bound[:, None]
+    if true.ndim != 2:
+        raise ValueError("per-horizon interval metrics expect shape (samples, horizon)")
+
+    target_coverage = 1.0 - alpha
+    rows = []
+    for index in range(true.shape[1]):
+        metrics = prediction_interval_metrics(
+            true[:, index],
+            lower_bound[:, index],
+            upper_bound[:, index],
+            alpha=alpha,
+        )
+        rows.append(
+            {
+                "horizon": index + 1,
+                "target_coverage": target_coverage,
+                "coverage_error": metrics["coverage"] - target_coverage,
+                **metrics,
+            }
+        )
+    return rows
+
+
 def skill_score(y_true, y_pred, baseline_pred, metric: str = "mae") -> float:
     true, pred = _as_matching_arrays(y_true, y_pred)
     _, baseline = _as_matching_arrays(true, baseline_pred)
