@@ -14,6 +14,7 @@ from ts_forecasting.metrics import (
     block_bootstrap_mae_interval,
     conformal_prediction_interval,
     forecast_metrics,
+    horizon_weighted_metrics,
     mase,
     mean_error,
     directional_accuracy,
@@ -134,6 +135,23 @@ def test_metrics_report_forecast_errors() -> None:
     assert report["directional_accuracy"] == 0.5
     assert report["mase"] == 1.0
     assert len(per_horizon_metrics(true, pred)) == 2
+
+
+def test_horizon_weighted_metrics_prioritize_near_term_errors() -> None:
+    true = np.zeros((2, 2))
+    pred = np.array([[1.0, 3.0], [1.0, 3.0]])
+
+    weighted = horizon_weighted_metrics(true, pred, decay=0.5)
+    uniform = horizon_weighted_metrics(true, pred, decay=1.0)
+
+    assert weighted["horizon_weighted_mae"] == pytest.approx(5 / 3)
+    assert weighted["horizon_weighted_rmse"] == pytest.approx(np.sqrt(11 / 3))
+    assert weighted["horizon_weighted_mae"] < uniform["horizon_weighted_mae"]
+
+
+def test_horizon_weighted_metrics_validate_decay() -> None:
+    with pytest.raises(ValueError, match="decay"):
+        horizon_weighted_metrics([1.0], [1.0], decay=0.0)
 
 
 def test_directional_accuracy_tracks_horizon_shape() -> None:

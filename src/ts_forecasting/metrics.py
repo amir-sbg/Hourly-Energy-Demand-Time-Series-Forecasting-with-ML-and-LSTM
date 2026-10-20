@@ -246,6 +246,33 @@ def forecast_metrics(y_true, y_pred, insample=None, seasonality: int = 24) -> di
     return report
 
 
+def horizon_weighted_metrics(
+    y_true,
+    y_pred,
+    *,
+    decay: float = 1.0,
+) -> dict[str, float]:
+    """Aggregate multi-step errors with geometric weights over forecast lead time."""
+
+    true, pred = _as_matching_arrays(y_true, y_pred)
+    if decay <= 0:
+        raise ValueError("decay must be positive")
+    if true.ndim == 1:
+        true = true[:, None]
+        pred = pred[:, None]
+    if true.ndim != 2:
+        raise ValueError("horizon-weighted metrics expect shape (samples, horizon)")
+
+    weights = np.power(decay, np.arange(true.shape[1], dtype=np.float64))
+    weights /= weights.sum()
+    absolute_error = np.abs(pred - true).mean(axis=0)
+    squared_error = np.square(pred - true).mean(axis=0)
+    return {
+        "horizon_weighted_mae": float(weights @ absolute_error),
+        "horizon_weighted_rmse": float(np.sqrt(weights @ squared_error)),
+    }
+
+
 def rank_models(
     metric_report: dict[str, dict[str, float]],
     primary_metric: str = "mae",
@@ -265,6 +292,12 @@ def rank_models(
                 "mae": float(metrics.get("mae", np.nan)),
                 "rmse": float(metrics.get("rmse", np.nan)),
                 "wape": float(metrics.get("wape", np.nan)),
+                "horizon_weighted_mae": float(
+                    metrics.get("horizon_weighted_mae", np.nan)
+                ),
+                "horizon_weighted_rmse": float(
+                    metrics.get("horizon_weighted_rmse", np.nan)
+                ),
                 "mean_error": float(metrics.get("mean_error", np.nan)),
                 "directional_accuracy": float(
                     metrics.get("directional_accuracy", np.nan)

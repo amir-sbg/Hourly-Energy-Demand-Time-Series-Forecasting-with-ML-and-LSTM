@@ -37,6 +37,7 @@ from .metrics import (
     block_bootstrap_mae_interval,
     conformal_prediction_interval,
     forecast_metrics,
+    horizon_weighted_metrics,
     diebold_mariano_test,
     per_horizon_metrics,
     prediction_interval_metrics,
@@ -304,7 +305,10 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         )
 
     metrics = {
-        name: forecast_metrics(y_test, values, insample=train_insample, seasonality=24)
+        name: {
+            **forecast_metrics(y_test, values, insample=train_insample, seasonality=24),
+            **horizon_weighted_metrics(y_test, values, decay=config.horizon_decay),
+        }
         for name, values in predictions.items()
     }
     skill_scores = model_skill_scores(y_test, predictions, baseline_name="seasonal_naive")
