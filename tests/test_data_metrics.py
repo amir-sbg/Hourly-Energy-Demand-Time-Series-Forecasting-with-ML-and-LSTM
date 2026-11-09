@@ -25,6 +25,7 @@ from ts_forecasting.metrics import (
     peak_demand_metrics,
     rank_models,
     residual_autocorrelation,
+    rmsse,
     skill_score,
     wape,
 )
@@ -160,6 +161,7 @@ def test_metrics_report_forecast_errors() -> None:
     assert report["wape"] == pytest.approx(400 / 52)
     assert report["directional_accuracy"] == 0.5
     assert report["mase"] == 1.0
+    assert report["rmsse"] == 1.0
     assert len(per_horizon_metrics(true, pred)) == 2
 
 
@@ -194,6 +196,14 @@ def test_forecast_bias_and_wape_are_scale_aware() -> None:
 
     assert mean_error(true, pred) == pytest.approx(2.0)
     assert wape(true, pred) == pytest.approx(10.0)
+
+
+def test_rmsse_uses_seasonal_squared_error_scale() -> None:
+    insample = np.array([1.0, 3.0, 2.0, 4.0, 3.0])
+    true = np.array([5.0, 6.0])
+    pred = np.array([7.0, 4.0])
+
+    assert rmsse(true, pred, insample, seasonality=2) == pytest.approx(2.0)
 
 
 def test_peak_metrics_focus_on_high_demand_errors() -> None:

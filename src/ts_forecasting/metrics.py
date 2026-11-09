@@ -266,6 +266,19 @@ def mase(y_true, y_pred, insample, seasonality: int = 1) -> float:
     return float(np.mean(np.abs(true - pred)) / scale)
 
 
+def rmsse(y_true, y_pred, insample, seasonality: int = 1) -> float:
+    true, pred = _as_matching_arrays(y_true, y_pred)
+    insample = np.asarray(insample, dtype=np.float64).reshape(-1)
+    if seasonality < 1:
+        raise ValueError("seasonality must be positive")
+    if len(insample) <= seasonality:
+        raise ValueError("insample series is too short for the requested seasonality")
+    scale = np.mean(np.square(insample[seasonality:] - insample[:-seasonality]))
+    if scale == 0:
+        return float("inf")
+    return float(np.sqrt(np.mean(np.square(true - pred)) / scale))
+
+
 def forecast_metrics(y_true, y_pred, insample=None, seasonality: int = 24) -> dict[str, float | int]:
     report = {
         "mae": mae(y_true, y_pred),
@@ -279,6 +292,7 @@ def forecast_metrics(y_true, y_pred, insample=None, seasonality: int = 24) -> di
     }
     if insample is not None:
         report["mase"] = mase(y_true, y_pred, insample, seasonality=seasonality)
+        report["rmsse"] = rmsse(y_true, y_pred, insample, seasonality=seasonality)
     return report
 
 
