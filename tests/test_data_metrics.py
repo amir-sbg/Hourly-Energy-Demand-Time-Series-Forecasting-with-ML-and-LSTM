@@ -11,6 +11,7 @@ from ts_forecasting.data import (
     time_series_diagnostics,
 )
 from ts_forecasting.metrics import (
+    asymmetric_conformal_interval,
     block_bootstrap_mae_interval,
     conformal_prediction_interval,
     forecast_metrics,
@@ -264,6 +265,23 @@ def test_conformal_interval_uses_horizon_specific_residuals() -> None:
 
     np.testing.assert_allclose(lower, [[5.0, 18.0]])
     np.testing.assert_allclose(upper, [[5.0, 22.0]])
+
+
+def test_asymmetric_conformal_interval_preserves_residual_bias() -> None:
+    calibration_true = np.array([[3.0, 11.0], [4.0, 13.0], [5.0, 15.0]])
+    calibration_pred = np.array([[2.0, 8.0], [2.0, 10.0], [4.0, 11.0]])
+    forecast = np.array([[10.0, 20.0]])
+
+    lower, upper = asymmetric_conformal_interval(
+        calibration_true,
+        calibration_pred,
+        forecast,
+        alpha=0.2,
+    )
+
+    np.testing.assert_allclose(lower, [[11.0, 23.0]])
+    np.testing.assert_allclose(upper, [[12.0, 24.0]])
+    assert np.all(lower > forecast)
 
 
 def test_prediction_interval_metrics_report_coverage_and_width() -> None:

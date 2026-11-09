@@ -165,6 +165,28 @@ def conformal_prediction_interval(
     return forecast - radius, forecast + radius
 
 
+def asymmetric_conformal_interval(
+    calibration_true,
+    calibration_pred,
+    forecast,
+    *,
+    alpha: float = 0.10,
+) -> tuple[np.ndarray, np.ndarray]:
+    true, calibrated = _as_matching_arrays(calibration_true, calibration_pred)
+    forecast = np.asarray(forecast, dtype=np.float64)
+    if forecast.ndim != 2 or forecast.shape[1] != true.shape[1]:
+        raise ValueError("forecast must have shape (samples, calibration horizon)")
+    if not np.isfinite(forecast).all():
+        raise ValueError("forecast must contain finite values")
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must be between 0 and 1")
+
+    signed_scores = true - calibrated
+    lower_offset = np.quantile(signed_scores, alpha / 2, axis=0, method="lower")
+    upper_offset = np.quantile(signed_scores, 1.0 - alpha / 2, axis=0, method="higher")
+    return forecast + lower_offset, forecast + upper_offset
+
+
 def prediction_interval_metrics(
     y_true,
     lower,
