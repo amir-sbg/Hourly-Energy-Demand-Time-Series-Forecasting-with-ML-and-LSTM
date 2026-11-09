@@ -105,6 +105,31 @@ def drift_from_windows(
     return target_history[:, -1, None] + slope[:, None] * steps
 
 
+def damped_drift_from_windows(
+    x: np.ndarray,
+    target_index: int,
+    horizon: int,
+    damping: float = 0.9,
+) -> np.ndarray:
+    values = np.asarray(x, dtype=np.float32)
+    if values.ndim != 3:
+        raise ValueError("x must have shape (samples, lookback, features)")
+    if horizon < 1:
+        raise ValueError("horizon must be positive")
+    if not 0.0 <= damping <= 1.0:
+        raise ValueError("damping must be between 0 and 1")
+    if values.shape[1] < 2:
+        raise ValueError("lookback must contain at least two observations")
+    if not 0 <= target_index < values.shape[2]:
+        raise ValueError("target_index is out of bounds")
+
+    target_history = values[:, :, target_index]
+    slope = (target_history[:, -1] - target_history[:, 0]) / (values.shape[1] - 1)
+    powers = np.power(damping, np.arange(1, horizon + 1, dtype=np.float32))
+    cumulative_trend = np.cumsum(powers)
+    return target_history[:, -1, None] + slope[:, None] * cumulative_trend[None, :]
+
+
 def moving_average_from_windows(
     x: np.ndarray,
     target_index: int,

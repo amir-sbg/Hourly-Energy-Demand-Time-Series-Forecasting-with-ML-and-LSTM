@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from ts_forecasting.baselines import (
+    damped_drift_from_windows,
     RidgeForecaster,
     drift_from_windows,
     flatten_windows,
@@ -9,6 +10,16 @@ from ts_forecasting.baselines import (
     persistence_from_windows,
     seasonal_naive_from_windows,
 )
+
+
+def test_damped_drift_interpolates_between_persistence_and_drift() -> None:
+    x = np.array([[[1.0], [2.0], [3.0]]], dtype=np.float32)
+
+    persistence = damped_drift_from_windows(x, target_index=0, horizon=3, damping=0.0)
+    undamped = damped_drift_from_windows(x, target_index=0, horizon=3, damping=1.0)
+
+    np.testing.assert_allclose(persistence, [[3.0, 3.0, 3.0]])
+    np.testing.assert_allclose(undamped, [[4.0, 5.0, 6.0]])
 
 
 def toy_windows() -> np.ndarray:
