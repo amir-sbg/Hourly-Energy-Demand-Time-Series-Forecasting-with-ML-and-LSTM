@@ -124,6 +124,31 @@ def test_supervised_windows_reject_missing_values() -> None:
         )
 
 
+def test_supervised_windows_skip_timestamp_gaps() -> None:
+    frame = generate_synthetic_demand(periods=24 * 14)
+    frame = frame.drop(index=100).reset_index(drop=True)
+
+    unfiltered = make_supervised_windows(
+        frame,
+        feature_columns=["load", "temperature"],
+        target_column="load",
+        lookback=24,
+        horizon=6,
+    )
+    contiguous = make_supervised_windows(
+        frame,
+        feature_columns=["load", "temperature"],
+        target_column="load",
+        lookback=24,
+        horizon=6,
+        timestamp_column="timestamp",
+        expected_frequency="1h",
+    )
+
+    assert len(contiguous.x) < len(unfiltered.x)
+    assert len(contiguous.x) == len(contiguous.y)
+
+
 def test_metrics_report_forecast_errors() -> None:
     true = np.array([[10.0, 12.0], [14.0, 16.0]])
     pred = np.array([[11.0, 11.0], [13.0, 17.0]])

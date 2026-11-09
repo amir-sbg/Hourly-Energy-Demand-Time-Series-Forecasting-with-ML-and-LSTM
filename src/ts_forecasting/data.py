@@ -210,6 +210,8 @@ def make_supervised_windows(
     lookback: int,
     horizon: int,
     stride: int = 1,
+    timestamp_column: str | None = None,
+    expected_frequency: str | pd.Timedelta | None = None,
 ) -> WindowedDataset:
     if lookback < 1 or horizon < 1 or stride < 1:
         raise ValueError("lookback, horizon, and stride must be positive")
@@ -224,12 +226,37 @@ def make_supervised_windows(
     if len(frame) < lookback + horizon:
         raise ValueError("not enough rows to build one supervised window")
 
+    timestamps = None
+    expected_delta = None
+    if timestamp_column is not None:
+        if timestamp_column not in frame.columns:
+            raise ValueError(f"missing timestamp column: {timestamp_column}")
+        timestamps = pd.to_datetime(frame[timestamp_column]).to_numpy()
+        if expected_frequency is None:
+            deltas = pd.Series(pd.to_datetime(frame[timestamp_column])).diff().dropna()
+            positive_deltas = deltas[deltas > pd.Timedelta(0)]
+            if positive_deltas.empty:
+                raise ValueError("could not infer a positive sampling interval")
+            expected_delta = positive_deltas.mode().iloc[0]
+        else:
+            expected_delta = pd.to_timedelta(expected_frequency)
+            if expected_delta <= pd.Timedelta(0):
+                raise ValueError("expected_frequency must be positive")
+
     x_rows = []
     y_rows = []
     for start in range(0, len(frame) - lookback - horizon + 1, stride):
         end = start + lookback
+        if timestamps is not None:
+            window_times = timestamps[start : end + horizon]
+            deltas = np.diff(window_times).astype("timedelta64[ns]")
+            if not np.all(deltas == np.timedelta64(expected_delta.value, "ns")):
+                continue
         x_rows.append(values[start:end])
         y_rows.append(target[end : end + horizon])
+
+    if not x_rows:
+        raise ValueError("no contiguous windows remain after timestamp gap filtering")
 
     return WindowedDataset(
         x=np.stack(x_rows),
